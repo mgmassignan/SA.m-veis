@@ -1,0 +1,203 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+import re
+
+# Banco de dados em memória para armazenar usuários e senhas
+banco_dados = {}
+
+def tela_acesso():
+    usuario = entry_acesso_usuario.get()
+    senha = entry_acesso_senha.get()
+
+    if usuario in banco_dados and banco_dados[usuario] == senha:
+        messagebox.showinfo("Login", "Login bem-sucedido!")
+    else:
+        messagebox.showerror("Login", "Usuário ou senha incorretos.")
+
+def tela_recuperacao():
+    def enviar_codigo():
+        email = entry_email.get()
+        
+        if re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            messagebox.showinfo("Recuperação de Senha", f"Código de recuperação enviado para {email}")
+            janela_recuperacao.destroy()
+        else:
+            messagebox.showerror("Erro", "Por favor, insira um e-mail válido.")
+
+    janela_recuperacao = tk.Toplevel(janela)
+    janela_recuperacao.title("Recuperação de Senha")
+    janela_recuperacao.geometry("350x200")
+    janela_recuperacao.config(bg="F5F5F5")  
+
+    label_instrucao = tk.Label(janela_recuperacao, text="Digite seu e-mail para recuperação:", font=("Georgia", 12), fg='#4B3D31', bg="#F5F5F5")
+    label_instrucao.pack(pady=(20, 10))
+
+    entry_email = tk.Entry(janela_recuperacao, font=("Georgia", 12), width=30)
+    entry_email.pack(pady=5)
+
+    button_enviar = tk.Button(janela_recuperacao, text="Enviar Código", font=("Georgia", 12), bg="#A9A9A9", fg="#FFFFFF", activebackground="#A0A0A0", command=enviar_codigo)
+    button_enviar.pack(pady=20)
+
+def formatar_cpf(cpf):
+    cpf = re.sub(r'\D', '', cpf)
+    if len(cpf) <= 11:
+        cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+    return cpf
+
+def formatar_data(data):
+    data = re.sub(r'\D', '', data)
+    if len(data) == 8:
+        data = f"{data[:2]}/{data[2:4]}/{data[4:]}"
+    return data
+
+def formatar_cpf_automatico(event):
+    cpf = entry_cpf.get()
+    cpf_formatado = formatar_cpf(cpf)
+    entry_cpf.delete(0, tk.END)
+    entry_cpf.insert(0, cpf_formatado)
+
+def formatar_data_automatico(event):
+    data = entry_data_nascimento.get()
+    data_formatada = formatar_data(data)
+    entry_data_nascimento.delete(0, tk.END)
+    entry_data_nascimento.insert(0, data_formatada)
+     
+
+def atualizar_cidade(event):
+    estado = combo_estado.get()
+    cidades = {
+        "São Paulo": ["São Paulo", "Campinas", "Guarulhos", "São Bernardo do Campo", "Santo André"],
+        "Santa Catarina": ["Joinville", "Florianópolis", "Blumenau", "São José", "Itajaí"],
+        "Paraná": ["Curitiba", "Londrina", "Maringá", "Ponta Grossa", "Cascavel"],
+        "Minas Gerais": ["Belo Horizonte", "Uberlândia", "Contagem", "Juiz de Fora", "Montes Claros"],
+        "Rio de Janeiro": ["Rio de Janeiro", "São Gonçalo", "Duque de Caxias", "Nova Iguaçu", "Niterói"],
+        "Bahia": ["Salvador", "Feira de Santana", "Vitória da Conquista", "Camaçari", "Juazeiro"]
+    }
+    combo_cidade['values'] = cidades.get(estado, [])
+    combo_cidade.set('')
+
+def tela_cadastro():
+    def validar_cadastro():
+        cpf = formatar_cpf(entry_cpf.get())
+        data_nascimento = formatar_data(entry_data_nascimento.get())
+        email = entry_email.get()
+
+        if not re.match(r"\d{3}\.\d{3}\.\d{3}-\d{2}", cpf):
+            messagebox.showerror("Erro", "CPF inválido. Use o formato 000.000.000-00.")
+        elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            messagebox.showerror("Erro", "E-mail inválido.")
+        else:
+            janela_cadastro.destroy()
+            tela_usuario_senha()
+
+    janela_cadastro = tk.Toplevel(janela)
+    janela_cadastro.title("Cadastro")
+    janela_cadastro.geometry("400x500")
+    janela_cadastro.config(bg="#F5F5F5")
+
+    campos = ["Nome", "Sobrenome", "Data de Nascimento (dd/mm/aaaa)", "CPF (000.000.000-00)", "Estado", "Cidade", "Email"]
+    entries = []
+    for campo in campos:
+        label = tk.Label(janela_cadastro, text=campo + ":", font=("Georgia", 12), fg='#4B3D31', bg="#F5F5F5")
+        label.pack(pady=(10, 0))
+        
+        if campo == "Estado":
+            global combo_estado
+            combo_estado = ttk.Combobox(janela_cadastro, font=("Georgia", 12), width=30, values=["São Paulo", "Santa Catarina", "Paraná", "Minas Gerais", "Rio de Janeiro", "Bahia"])
+            combo_estado.pack(pady=5)
+            combo_estado.bind("<<ComboboxSelected>>", atualizar_cidade)
+            entries.append(combo_estado)
+        elif campo == "Cidade":
+            global combo_cidade
+            combo_cidade = ttk.Combobox(janela_cadastro, font=("Georgia", 12), width=30)
+            combo_cidade.pack(pady=5)
+            entries.append(combo_cidade)
+        elif campo == "Data de Nascimento (dd/mm/aaaa)":
+            global entry_data_nascimento
+            entry_data_nascimento = tk.Entry(janela_cadastro, font=("Georgia", 12), width=30)
+            entry_data_nascimento.pack(pady=5)
+            entry_data_nascimento.bind("<KeyRelease>", formatar_data_automatico)
+            entries.append(entry_data_nascimento)
+        elif campo == "CPF (000.000.000-00)":
+            global entry_cpf
+            entry_cpf = tk.Entry(janela_cadastro, font=("Georgia", 12), width=30)
+            entry_cpf.pack(pady=5)
+            entry_cpf.bind("<KeyRelease>", formatar_cpf_automatico)
+            entries.append(entry_cpf)
+        else:
+            entry = tk.Entry(janela_cadastro, font=("Georgia", 12), width=30)
+            entry.pack(pady=5)
+            entries.append(entry)
+
+    entry_email = entries[6]
+
+    button_continuar = tk.Button(janela_cadastro, text="Continuar", font=("Georgia", 12), bg="#A9A9A9", fg="#FFFFFF", activebackground="#A0A0A0", command=validar_cadastro)
+    button_continuar.pack(pady=20)
+
+def tela_usuario_senha():
+    def finalizar_cadastro():
+        usuario = entry_usuario.get()
+        senha = entry_senha.get()
+        confirmar_senha = entry_confirmar_senha.get()
+
+        if " " in usuario or usuario.startswith(".") or usuario.endswith("."):
+            messagebox.showerror("Erro", "O nome de usuário não pode conter espaços e não deve começar ou terminar com ponto.")
+        elif senha != confirmar_senha:
+            messagebox.showerror("Erro", "As senhas não são iguais.")
+        else:
+            banco_dados[usuario] = senha
+            messagebox.showinfo("Cadastro", "Cadastro concluído com sucesso!")
+            janela_usuario_senha.destroy()
+
+    janela_usuario_senha = tk.Toplevel(janela)
+    janela_usuario_senha.title("Definir Nome de Usuário e Senha")
+    janela_usuario_senha.geometry("400x300")
+    janela_usuario_senha.config(bg="#F5F5F5")
+
+    label_usuario = tk.Label(janela_usuario_senha, text="Crie um nome de usuário:", font=("Georgia", 12), fg='#4B3D31', bg="#F5F5F5")
+    label_usuario.pack(pady=(20, 5))
+    entry_usuario = tk.Entry(janela_usuario_senha, font=("Georgia", 12), width=30)
+    entry_usuario.pack(pady=5)
+
+    label_senha = tk.Label(janela_usuario_senha, text="Crie uma senha:", font=("Georgia", 12), fg='#4B3D31', bg="#F5F5F5")
+    label_senha.pack(pady=(10, 5))
+    entry_senha = tk.Entry(janela_usuario_senha, font=("Georgia", 12), width=30, show='*')
+    entry_senha.pack(pady=5)
+
+    label_confirmar_senha = tk.Label(janela_usuario_senha, text="Confirme a senha:", font=("Georgia", 12), fg='#4B3D31', bg="#F5F5F5")
+    label_confirmar_senha.pack(pady=(10, 5))
+    entry_confirmar_senha = tk.Entry(janela_usuario_senha, font=("Georgia", 12), width=30, show='*')
+    entry_confirmar_senha.pack(pady=5)
+
+    button_finalizar = tk.Button(janela_usuario_senha, text="Finalizar", font=("Georgia", 12), bg="#A9A9A9", fg="#FFFFFF", activebackground="#A0A0A0", command=finalizar_cadastro)
+    button_finalizar.pack(pady=20)
+
+janela = tk.Tk()
+janela.title("Sistema de Cadastro e Login")
+janela.geometry("400x350")
+janela.config(bg="#F5F5F5")
+
+
+label_titulo = tk.Label(janela, text="Móveis & Estilo", font=("Georgia", 20, "bold"), fg='#4B3D31', bg="#F5F5F5")
+label_titulo.pack(pady=(30, 10))
+
+label_usuario = tk.Label(janela, text="Usuário:", font=("Georgia", 12), fg='#4B3D31')
+label_usuario.pack(pady=(10, 0))
+entry_acesso_usuario = tk.Entry(janela, font=("Georgia", 12), width=30)
+entry_acesso_usuario.pack(pady=5)
+
+label_senha = tk.Label(janela, text="Senha:", font=("Georgia", 12), fg='#4B3D31')
+label_senha.pack(pady=(10, 0))
+entry_acesso_senha = tk.Entry(janela, font=("Georgia", 12), width=30, show='*')
+entry_acesso_senha.pack(pady=5)
+
+button_login = tk.Button(janela, text="Entrar", font=("Georgia", 12), bg="#A9A9A9", fg="#FFFFFF", activebackground="#A0A0A0", command=tela_acesso)
+button_login.pack(pady=20)
+
+button_cadastro = tk.Button(janela, text="Cadastro", font=("Georgia", 10, "bold"), fg='#4B3D31', bg="#F5F5F5", relief="flat", command=tela_cadastro)
+button_cadastro.pack(pady=(5, 5))
+
+button_recuperar_senha = tk.Button(janela, text="Recuperar Senha", font=("Georgia", 10, "bold"), fg='#4B3D31', bg="#F5F5F5", relief="flat", command=tela_recuperacao)
+button_recuperar_senha.pack()
+
+janela.mainloop()
