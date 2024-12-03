@@ -1,0 +1,176 @@
+import tkinter as tk
+from tkinter import messagebox
+
+
+class Estoque:
+    """Classe responsável por gerenciar o estoque de produtos."""
+
+    def __init__(self):
+        self.__estoque = {}  # {codigo: {"nome": str, "quantidade": int}}
+        self.__ultimo_codigo = 0
+
+    def gerar_codigo(self) -> str:
+        """Gera um novo código único para cada produto."""
+        self.__ultimo_codigo += 1
+        return f"#{self.__ultimo_codigo:03}"
+
+    def adicionar_item(self, nome: str, quantidade: int) -> str:
+        """Adiciona ou atualiza um item no estoque."""
+        for codigo, dados in self.__estoque.items():
+            if dados["nome"].lower() == nome.lower():
+                dados["quantidade"] += quantidade
+                return codigo
+
+        # Caso o produto não exista no estoque, cria um novo item
+        codigo = self.gerar_codigo()
+        self.__estoque[codigo] = {"nome": nome, "quantidade": quantidade}
+        return codigo
+
+    def remover_item(self, nome: str) -> bool:
+        """Remove um item do estoque pelo nome."""
+        for codigo, dados in list(self.__estoque.items()):
+            if dados["nome"].lower() == nome.lower():
+                del self.__estoque[codigo]
+                return True
+        return False
+
+    def editar_item(self, codigo: str, novo_nome: str, nova_quantidade: int) -> bool:
+        """Edita os dados de um item no estoque."""
+        if codigo in self.__estoque:
+            self.__estoque[codigo] = {"nome": novo_nome, "quantidade": nova_quantidade}
+            return True
+        return False
+
+    def listar_estoque(self) -> dict:
+        """Retorna o estoque completo."""
+        return self.__estoque
+
+
+class InterfaceApp:
+    """Classe responsável pela interface gráfica do aplicativo."""
+
+    def __init__(self, janela):
+        self.janela = janela
+        self.janela.title("Controle de Estoque - Loja de Móveis")
+        self.centralizar_janela(400, 500)
+        self.janela.configure(bg="#F5F5F5")
+
+        self.estoque = Estoque()
+        self.criar_componentes()
+
+    def centralizar_janela(self, largura, altura):
+        largura_tela = self.janela.winfo_screenwidth()
+        altura_tela = self.janela.winfo_screenheight()
+        x = (largura_tela // 2) - (largura // 2)
+        y = (altura_tela // 2) - (altura // 2)
+        self.janela.geometry(f"{largura}x{altura}+{x}+{y}")
+
+    def criar_componentes(self):
+        """Cria os componentes da interface gráfica."""
+        tk.Label(self.janela, text="Controle de Estoque", font=("Georgia", 20, "bold"),
+                 bg="#F5F5F5", fg="#4B3D31").pack(pady=(20, 10))
+
+        self.criar_campo("Nome do Móvel:", "nome")
+        self.criar_campo("Quantidade:", "quantidade")
+        self.criar_botoes_gerais()
+
+        self.texto_estoque = tk.Text(self.janela, height=10, width=40, font=("Arial", 12), bg="#FFFFFF", fg="#4B3D31", relief="solid", borderwidth=1)
+        self.texto_estoque.config(state="disabled")
+        self.texto_estoque.pack(pady=(10, 5))
+
+        self.criar_campo("Código do Produto:", "codigo")
+        self.criar_botao_editar()  # Adiciona o botão logo abaixo do campo de código
+
+    def criar_campo(self, texto, atributo):
+        tk.Label(self.janela, text=texto, font=("Georgia", 12), bg="#F5F5F5", fg="#4B3D31").pack(pady=(10, 5))
+        entry = tk.Entry(self.janela, font=("Georgia", 12), width=30)
+        entry.pack(pady=5)
+        setattr(self, f"entry_{atributo}", entry)
+
+    def criar_botoes_gerais(self):
+        frame_botoes = tk.Frame(self.janela, bg="#F5F5F5")
+        frame_botoes.pack(pady=10)
+
+        botoes = [
+            {"texto": "Adicionar", "comando": self.adicionar_item, "cor": "#4CAF50"},
+            {"texto": "Remover", "comando": self.remover_item, "cor": "#F44336"},
+            {"texto": "Exibir Estoque", "comando": self.exibir_estoque, "cor": "#A9A9A9"},
+        ]
+
+        for botao in botoes:
+            tk.Button(frame_botoes, text=botao["texto"], command=botao["comando"], font=("Georgia", 12),
+                      bg=botao["cor"], fg="#FFFFFF", relief="groove", width=12).pack(side="left", padx=5)
+
+    def criar_botao_editar(self):
+        """Cria o botão de editar produto logo abaixo do campo de código."""
+        tk.Button(self.janela, text="Editar Produto", command=self.editar_produto, font=("Georgia", 12),
+                  bg="#FFA500", fg="#FFFFFF", relief="groove", width=15).pack(pady=(5, 10))
+
+    def adicionar_item(self):
+        nome = self.entry_nome.get()
+        quantidade = self.entry_quantidade.get()
+        if nome and quantidade.isdigit():
+            codigo = self.estoque.adicionar_item(nome, int(quantidade))
+            messagebox.showinfo("Sucesso", f"Produto '{nome}' atualizado com código {codigo}.")
+            self.entry_nome.delete(0, tk.END)
+            self.entry_quantidade.delete(0, tk.END)
+            self.exibir_estoque()
+        else:
+            messagebox.showwarning("Atenção", "Preencha os campos corretamente.")
+
+    def remover_item(self):
+        nome = self.entry_nome.get()
+        if self.estoque.remover_item(nome):
+            messagebox.showinfo("Sucesso", f"Produto '{nome}' removido.")
+            self.exibir_estoque()
+        else:
+            messagebox.showwarning("Erro", "Produto não encontrado.")
+
+    def exibir_estoque(self):
+        self.texto_estoque.config(state="normal")
+        self.texto_estoque.delete(1.0, tk.END)
+        for codigo, dados in self.estoque.listar_estoque().items():
+            self.texto_estoque.insert(tk.END, f"{codigo}: Nome: {dados['nome']}, Quantidade: {dados['quantidade']}\n")
+        self.texto_estoque.config(state="disabled")
+
+    def editar_produto(self):
+        codigo = self.entry_codigo.get()
+        if codigo in self.estoque.listar_estoque():
+            self.__abrir_janela_edicao(codigo)
+        else:
+            messagebox.showwarning("Erro", "Código não encontrado.")
+
+    def __abrir_janela_edicao(self, codigo):
+        dados = self.estoque.listar_estoque()[codigo]
+        janela_editar = tk.Toplevel(self.janela)
+        janela_editar.title("Editar Produto")
+
+        tk.Label(janela_editar, text="Novo Nome:", font=("Georgia", 12)).pack(pady=5)
+        entry_novo_nome = tk.Entry(janela_editar, font=("Georgia", 12))
+        entry_novo_nome.insert(0, dados["nome"])
+        entry_novo_nome.pack(pady=5)
+
+        tk.Label(janela_editar, text="Nova Quantidade:", font=("Georgia", 12)).pack(pady=5)
+        entry_nova_quantidade = tk.Entry(janela_editar, font=("Georgia", 12))
+        entry_nova_quantidade.insert(0, str(dados["quantidade"]))
+        entry_nova_quantidade.pack(pady=5)
+
+        def salvar():
+            novo_nome = entry_novo_nome.get()
+            nova_quantidade = entry_nova_quantidade.get()
+            if novo_nome and nova_quantidade.isdigit():
+                self.estoque.editar_item(codigo, novo_nome, int(nova_quantidade))
+                messagebox.showinfo("Sucesso", "Produto atualizado!")
+                janela_editar.destroy()
+                self.exibir_estoque()
+            else:
+                messagebox.showwarning("Erro", "Preencha os campos corretamente.")
+
+        tk.Button(janela_editar, text="Salvar Alterações", command=salvar, font=("Georgia", 12),
+                  bg="#4CAF50", fg="#FFFFFF").pack(pady=10)
+
+
+if __name__ == "__main__":
+    janela = tk.Tk()
+    app = InterfaceApp(janela)
+    janela.mainloop()
